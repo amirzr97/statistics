@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attack Simulation with Grid and Histogram</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+        }
+        .bar {
+            display: flex;
+            margin-bottom: 5px;
+        }
+        .bar-text {
+            width: 100px;
+        }
+        .bar-fill {
+            background-color: #007bff;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Attack Simulation</h2>
+    <label>Number of Servers (n): <input type="number" id="n-servers" value="10"></label>
+    <br>
+    <label>Number of Attackers (m): <input type="number" id="m-attackers" value="5"></label>
+    <br>
+    <label>Penetration Probability (p): <input type="number" id="p-penetration" value="0.5" step="0.01" min="0" max="1"></label>
+    <br><br>
+    <button onclick="runSimulation()">Run Simulation</button>
+    <canvas id="simulationCanvas" width="800" height="600"></canvas>
+    <div id="histogram"></div>
+
+    <script>
+        const canvas = document.getElementById('simulationCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function drawGrid(n_servers, m_attackers) {
+            const serverWidth = canvas.width / n_servers;
+            const attackerHeight = canvas.height / m_attackers;
+
+            // Vertical grid lines (servers)
+            ctx.strokeStyle = '#cccccc';
+            for (let i = 1; i <= n_servers; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * serverWidth, 0);
+                ctx.lineTo(i * serverWidth, canvas.height);
+                ctx.stroke();
+            }
+
+            // Horizontal grid lines (attackers)
+            for (let i = 1; i <= m_attackers; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, i * attackerHeight);
+                ctx.lineTo(canvas.width, i * attackerHeight);
+                ctx.stroke();
+            }
+        }
+
+        function runSimulation() {
+            const n_servers = parseInt(document.getElementById('n-servers').value);
+            const m_attackers = parseInt(document.getElementById('m-attackers').value);
+            const p_penetration = parseFloat(document.getElementById('p-penetration').value);
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+            drawGrid(n_servers, m_attackers); // Draw grid
+
+            const serverWidth = canvas.width / n_servers;
+            const attackerHeight = canvas.height / m_attackers;
+
+            let penetrationResults = Array.from({ length: m_attackers }, () => []);
+            const colors = [];
+
+            // Simulate each attacker's penetration results
+            for (let i = 0; i < m_attackers; i++) {
+                let x = 0;
+                let y = canvas.height - (i + 1) * attackerHeight; // Start at the bottom
+                const lineColor = getRandomColor(); // Unique color for each attacker
+                colors.push(lineColor);
+
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                for (let j = 0; j < n_servers; j++) {
+                    const penetrated = Math.random() < p_penetration;
+                    x = (j + 1) * serverWidth;
+                    if (penetrated) {
+                        y -= attackerHeight / 2; // Jump up if penetration occurs
+                        penetrationResults[i].push(1);
+                    } else {
+                        penetrationResults[i].push(0);
+                    }
+                    ctx.lineTo(x, y);
+                }
+                ctx.strokeStyle = lineColor;
+                ctx.stroke();
+            }
+
+            // Calculate the total penetrations for each attacker
+            const finalPenetrations = penetrationResults.map(res => res.reduce((a, b) => a + b, 0));
+
+            createHistogram(finalPenetrations, colors); // Create histogram
+        }
+
+        // Random color generator
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        // Create histogram of final penetration levels
+        function createHistogram(data, colors) {
+            const histogramDiv = document.getElementById('histogram');
+            histogramDiv.innerHTML = ""; // Clear previous histogram
+
+            data.forEach((level, id) => {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+
+                // Add attacker's ID
+                const barText = document.createElement('div');
+                barText.className = 'bar-text';
+                barText.innerText = `Attacker ${id}: `;
+
+                // Add attacker's progress bar
+                const barFill = document.createElement('div');
+                barFill.className = 'bar-fill';
+                barFill.style.width = `${level * 30}px`; // Adjust width based on penetrations
+                barFill.style.backgroundColor = colors[id];
+                barFill.innerText = level;
+
+                bar.appendChild(barText);
+                bar.appendChild(barFill);
+                histogramDiv.appendChild(bar);
+            });
+        }
+    </script>
+</body>
+</html>
